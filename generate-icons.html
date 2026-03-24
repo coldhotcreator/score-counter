@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生成图标</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6">
+        <h1 class="text-2xl font-semibold text-center mb-6">生成应用图标</h1>
+        
+        <div class="space-y-4">
+            <!-- 192x192 图标 -->
+            <div>
+                <h2 class="text-lg font-medium mb-2">192x192 图标</h2>
+                <canvas id="icon192" width="192" height="192" class="border border-gray-200 rounded-lg mx-auto"></canvas>
+                <button onclick="downloadIcon('icon192', 'icon-192x192.png')" class="mt-2 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    下载 192x192 图标
+                </button>
+            </div>
+            
+            <!-- 512x512 图标 -->
+            <div>
+                <h2 class="text-lg font-medium mb-2">512x512 图标</h2>
+                <canvas id="icon512" width="512" height="512" class="border border-gray-200 rounded-lg mx-auto"></canvas>
+                <button onclick="downloadIcon('icon512', 'icon-512x512.png')" class="mt-2 w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 transition-colors">
+                    下载 512x512 图标
+                </button>
+            </div>
+        </div>
+        
+        <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h3 class="font-medium text-yellow-800 mb-2">使用说明</h3>
+            <ol class="list-decimal list-inside text-sm text-yellow-700 space-y-1">
+                <li>点击上面的按钮下载图标</li>
+                <li>将下载的图标保存到项目根目录</li>
+                <li>确保文件名分别为：icon-192x192.png 和 icon-512x512.png</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        // 绘制图标
+        function drawIcon(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            const size = canvas.width;
+            
+            // 清空画布
+            ctx.clearRect(0, 0, size, size);
+            
+            // 绘制背景
+            ctx.fillStyle = '#007AFF';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 绘制麦克风图标
+            ctx.fillStyle = 'white';
+            
+            // 麦克风主体
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/4, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // 麦克风支架
+            ctx.fillRect(size/2 - size/16, size * 3/4, size/8, size/8);
+            ctx.fillRect(size/2 - size/8, size * 7/8, size/4, size/16);
+            
+            // 绘制星星
+            drawStar(ctx, size * 3/4, size/4, size/10, 5, 'white');
+        }
+        
+        // 绘制星星
+        function drawStar(ctx, x, y, radius, points, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            for (let i = 0; i < points * 2; i++) {
+                const angle = (i * Math.PI) / points - Math.PI/2;
+                const distance = i % 2 === 0 ? radius : radius * 0.5;
+                const px = x + Math.cos(angle) * distance;
+                const py = y + Math.sin(angle) * distance;
+                if (i === 0) {
+                    ctx.moveTo(px, py);
+                } else {
+                    ctx.lineTo(px, py);
+                }
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        // 下载图标
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        // 页面加载时绘制图标
+        window.onload = function() {
+            drawIcon('icon192');
+            drawIcon('icon512');
+        };
+    </script>
+</body>
+</html>
