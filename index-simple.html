@@ -182,35 +182,55 @@
         // 初始化语音识别
         function initRecognition() {
             // 尝试使用标准API和webkit前缀API
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition || window.mozSpeechRecognition || window.msSpeechRecognition;
             
             if (SpeechRecognition) {
                 recognition = new SpeechRecognition();
                 recognition.lang = 'zh-CN';
                 recognition.continuous = false;
-                recognition.interimResults = false;
+                recognition.interimResults = true; // 允许中间结果
+                recognition.maxAlternatives = 3; // 提供多个识别结果
+                recognition.timeout = 5000; // 5秒超时
 
                 recognition.onstart = function() {
-                    document.getElementById('recognition-status').textContent = '正在聆听...';
+                    document.getElementById('recognition-status').textContent = '正在聆听，请说出成绩...';
                     document.getElementById('start-btn').classList.add('animate-pulse');
+                    document.getElementById('start-btn').classList.add('bg-red-500');
                     console.log('语音识别已开始');
                 };
 
                 recognition.onresult = function(event) {
                     console.log('识别结果:', event.results);
-                    if (event.results && event.results[0] && event.results[0][0]) {
-                        const transcript = event.results[0][0].transcript;
-                        console.log('识别文本:', transcript);
-                        processTranscript(transcript);
-                    } else {
-                        console.error('识别结果格式错误');
-                        document.getElementById('recognition-status').textContent = '识别结果错误，请重试';
+                    
+                    // 处理所有可能的结果
+                    for (let i = event.resultIndex; i < event.results.length; i++) {
+                        if (event.results[i].isFinal) {
+                            const transcript = event.results[i][0].transcript;
+                            console.log('最终识别文本:', transcript);
+                            
+                            // 显示识别结果
+                            document.getElementById('recognition-status').textContent = '识别结果: ' + transcript;
+                            
+                            // 处理识别结果
+                            processTranscript(transcript);
+                            
+                            // 延迟重置状态
+                            setTimeout(() => {
+                                document.getElementById('recognition-status').textContent = '点击开始按钮进行语音输入';
+                            }, 2000);
+                        } else {
+                            // 显示中间结果
+                            const interimTranscript = event.results[i][0].transcript;
+                            console.log('中间识别文本:', interimTranscript);
+                            document.getElementById('recognition-status').textContent = '正在识别: ' + interimTranscript;
+                        }
                     }
                 };
 
                 recognition.onend = function() {
                     document.getElementById('recognition-status').textContent = '点击开始按钮进行语音输入';
                     document.getElementById('start-btn').classList.remove('animate-pulse');
+                    document.getElementById('start-btn').classList.remove('bg-red-500');
                     console.log('语音识别已结束');
                 };
 
@@ -234,10 +254,14 @@
                         case 'network':
                             errorMessage = '网络错误，请检查网络连接';
                             break;
+                        case 'service-not-allowed':
+                            errorMessage = '语音服务不可用，请稍后重试';
+                            break;
                     }
                     
                     document.getElementById('recognition-status').textContent = errorMessage;
                     document.getElementById('start-btn').classList.remove('animate-pulse');
+                    document.getElementById('start-btn').classList.remove('bg-red-500');
                 };
             } else {
                 document.getElementById('recognition-status').textContent = '您的浏览器不支持语音识别';
@@ -249,25 +273,52 @@
         function processTranscript(transcript) {
             console.log('识别结果:', transcript);
             
+            // 转换为小写，提高匹配成功率
+            const lowerTranscript = transcript.toLowerCase();
+            
             // 处理成绩等级
-            if (transcript.includes('优')) {
+            if (lowerTranscript.includes('优') || lowerTranscript.includes('优秀')) {
                 scores.excellent++;
+                console.log('识别到：优');
             }
-            if (transcript.includes('良')) {
+            if (lowerTranscript.includes('良') || lowerTranscript.includes('良好')) {
                 scores.good++;
+                console.log('识别到：良');
             }
-            if (transcript.includes('A') || transcript.includes('a')) {
+            if (lowerTranscript.includes('a')) {
                 scores.a++;
+                console.log('识别到：A');
             }
-            if (transcript.includes('B') || transcript.includes('b')) {
+            if (lowerTranscript.includes('b')) {
                 scores.b++;
+                console.log('识别到：B');
             }
             
-            // 处理星星数量
-            const starMatch = transcript.match(/(\d+)颗星/);
-            if (starMatch) {
-                const starCount = parseInt(starMatch[1]);
+            // 处理星星数量（更灵活的匹配）
+            // 匹配 "3颗星"、"3星"、"三星" 等形式
+            const starMatch1 = transcript.match(/(\d+)颗?星/);
+            const starMatch2 = transcript.match(/(\d+)星/);
+            const starMatch3 = transcript.match(/(三|四|五|六|七|八|九|十|一|二|两)(颗)?星/);
+            
+            if (starMatch1) {
+                const starCount = parseInt(starMatch1[1]);
                 scores.star += starCount;
+                console.log('识别到星星数量：', starCount);
+            } else if (starMatch2) {
+                const starCount = parseInt(starMatch2[1]);
+                scores.star += starCount;
+                console.log('识别到星星数量：', starCount);
+            } else if (starMatch3) {
+                // 处理中文数字
+                const chineseNum = starMatch3[1];
+                const numMap = {
+                    '一': 1, '二': 2, '两': 2, '三': 3, '四': 4, '五': 5,
+                    '六': 6, '七': 7, '八': 8, '九': 9, '十': 10
+                };
+                if (numMap[chineseNum]) {
+                    scores.star += numMap[chineseNum];
+                    console.log('识别到星星数量：', numMap[chineseNum]);
+                }
             }
             
             // 更新UI
